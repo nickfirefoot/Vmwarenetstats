@@ -6,7 +6,7 @@ shared container image, no shared registry path, no version coupling.
 
 ## Status — read this first
 
-**Version 1.4.0 is a schema and content release. It does not collect yet.**
+**Version 1.4.1 is a schema and content release. It does not collect yet.**
 
 The pak is built with a placeholder image digest, so:
 
@@ -60,7 +60,7 @@ still running. Wait for it; nothing has failed.
 
 Documented honestly rather than discovered later:
 
-- **Collection does not work in 1.4.0.** See Status above.
+- **Collection does not work in 1.4.1.** See Status above.
 - **Mellanox ring configuration is unavailable.** `nmlx5_core` does not expose ring
   size through the VMkernel Sysinfo Interface, so `esxcli network nic ring current get`
   returns *Not supported*. Broadcom's own `nicinfo.sh` uses the same command and hits
