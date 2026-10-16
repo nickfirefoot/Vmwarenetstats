@@ -6,7 +6,7 @@ shared container image, no shared registry path, no version coupling.
 
 ## Status — read this first
 
-**Version 1.4.1 is a schema and content release. It does not collect yet.**
+**Version 1.4.2 is a schema and content release. It does not collect yet.**
 
 The pak is built with a placeholder image digest, so:
 
@@ -56,11 +56,23 @@ is mandatory. You are told up front rather than discovering it mid-install.
 If a panel shows *"Widget is not configured"* with an hourglass, the content import is
 still running. Wait for it; nothing has failed.
 
+## Fixed in 1.4.2
+
+An adversarial pre-install review of 1.4.1 found four defects that would have
+made the first install misleading. All four are fixed and verified:
+
+| | |
+|---|---|
+| **Parent relationships were never sent.** The HostSystem parent object was built free-standing and never added to the result, so the payload carried `"relationships": []` while every object's local parent set looked correct. Measured: 80 local parents, **0** links on the wire. Every dashboard selector would have reached nothing. | fixed, verified 80/80 on the wire |
+| **Dashboard ids were `uuid4`**, regenerated on every build, so a second install would have stacked duplicate dashboards instead of replacing them. | fixed to `uuid5`; a determinism test now gates it |
+| **The cluster selector used `Configuration|Name`**, which is the UI attribute-picker's display path and is neither a property nor a statkey. The real key is `config|name`. The selector drives all three dashboards. | fixed and verified against the live API |
+| **`connectFailed24h` emitted a constant `0`** on every vNIC while nothing ever queried the event it claimed to count. | metric removed rather than left declared-and-empty |
+
 ## Known limitations
 
 Documented honestly rather than discovered later:
 
-- **Collection does not work in 1.4.1.** See Status above.
+- **Collection does not work in 1.4.2.** See Status above.
 - **Mellanox ring configuration is unavailable.** `nmlx5_core` does not expose ring
   size through the VMkernel Sysinfo Interface, so `esxcli network nic ring current get`
   returns *Not supported*. Broadcom's own `nicinfo.sh` uses the same command and hits
