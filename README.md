@@ -6,19 +6,28 @@ shared container image, no shared registry path, no version coupling.
 
 ## Status — read this first
 
-**Version 1.4.2 is a schema and content release. It does not collect yet.**
+**Version 1.5.0 carries a real image digest and will collect** — once the GHCR
+package is made public.
 
-The pak is built with a placeholder image digest, so:
-
-| Installs and works | Does not work |
+| | |
 |---|---|
-| Schema — 3 resource kinds, 46 metrics, 32 properties | Collection |
-| 3 dashboards, 11 views | Any data in the panels |
+| schema | 3 resource kinds, **68 metrics, 36 properties** |
+| content | **15 views, 3 dashboards** (2 primary, scoped by cluster) |
+| image | `ghcr.io/nickfirefoot/vmwarenetstats@sha256:6c2495…` — pushed |
+| dry run | 82 objects, **82 parent links**, 1,396 metric values, 11 s / 4 hosts |
 
-Every panel will be empty until a real adapter image is published and the pak is
-rebuilt against its digest. That is deliberate: install and image pull are separate
-phases in Operations, so this release proves the schema and screens land correctly
-before the container path is settled.
+**One step remains, and it is not in the pak:** the GHCR package is created
+*private* by default, and a Cloud Proxy pulls the digest **anonymously**. Until it
+is public the adapter installs and silently cannot collect, with an error that
+reads like a management-pack fault rather than a permissions one.
+
+> `https://github.com/users/nickfirefoot/packages/container/vmwarenetstats/settings`
+> → *Change visibility* → **Public**
+
+**The first collection cycle will look half-empty and that is correct.** Measured:
+443 metric values cold, 1,396 warm. Rates need two samples, and this pack emits
+*nothing* rather than a zero when it has one. Wait one further cycle before judging
+any rate column empty.
 
 ## What it collects (once collecting)
 
@@ -56,7 +65,7 @@ is mandatory. You are told up front rather than discovering it mid-install.
 If a panel shows *"Widget is not configured"* with an hourglass, the content import is
 still running. Wait for it; nothing has failed.
 
-## Fixed in 1.4.2
+## Fixed in 1.5.0
 
 An adversarial pre-install review of 1.4.1 found four defects that would have
 made the first install misleading. All four are fixed and verified:
@@ -72,7 +81,7 @@ made the first install misleading. All four are fixed and verified:
 
 Documented honestly rather than discovered later:
 
-- **Collection does not work in 1.4.2.** See Status above.
+- **Collection does not work in 1.5.0.** See Status above.
 - **Mellanox ring configuration is unavailable.** `nmlx5_core` does not expose ring
   size through the VMkernel Sysinfo Interface, so `esxcli network nic ring current get`
   returns *Not supported*. Broadcom's own `nicinfo.sh` uses the same command and hits
