@@ -6,7 +6,7 @@ shared container image, no shared registry path, no version coupling.
 
 ## Status — read this first
 
-**Version 1.5.3 carries a real image digest and will collect** — once the GHCR
+**Version 1.6.0 carries a real image digest and will collect** — once the GHCR
 package is made public.
 
 | | |
@@ -65,7 +65,7 @@ is mandatory. You are told up front rather than discovering it mid-install.
 If a panel shows *"Widget is not configured"* with an hourglass, the content import is
 still running. Wait for it; nothing has failed.
 
-## Fixed in 1.5.3
+## Fixed in 1.6.0
 
 An adversarial pre-install review of 1.4.1 found four defects that would have
 made the first install misleading. All four are fixed and verified:
@@ -81,7 +81,7 @@ made the first install misleading. All four are fixed and verified:
 
 Documented honestly rather than discovered later:
 
-- **Collection does not work in 1.5.3.** See Status above.
+- **Collection does not work in 1.6.0.** See Status above.
 - **Mellanox ring configuration is unavailable.** `nmlx5_core` does not expose ring
   size through the VMkernel Sysinfo Interface, so `esxcli network nic ring current get`
   returns *Not supported*. Broadcom's own `nicinfo.sh` uses the same command and hits
