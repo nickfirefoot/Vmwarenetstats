@@ -1,99 +1,92 @@
 # VMware vSphere Network Statistics — management pack for VCF Operations
 
-Generic per-interface network telemetry for vSphere, collected agentlessly through a
-single read-only vCenter connection. Independent of any other management pack: no
-shared container image, no shared registry path, no version coupling.
+Per-interface network telemetry for vSphere, collected agentlessly through a single
+read-only vCenter connection: physical uplinks, VMkernel interfaces (NSX TEPs
+included) and VM vNICs. Independent of any other management pack: no shared
+container image, no shared registry path, no version coupling.
 
-## Status — read this first
+## Current release: 2.0.3
 
-**Version 2.0.0 carries a real image digest and will collect** — once the GHCR
-package is made public.
+`paks/VsphereNetStats_2.0.3.pak` ·
+image `ghcr.io/nickfirefoot/vmwarenetstats@sha256:562c38a9aefe0cbf66775be7111b6b1ca1574d580587e39dcbe6a548cf8734c1` (public)
 
-| | |
+Validated on Aria Operations 8.18.7 and VCF Operations 9.1.1.
+
+## Where the data lands
+
+The pack writes its values onto **vCenter's own objects** in Operations, under the
+prefix `pcktpshr`, so selecting a vCenter cluster scopes every dashboard natively:
+
+| vCenter object | keys |
 |---|---|
-| schema | 3 resource kinds, **68 metrics, 36 properties** |
-| content | **15 views, 3 dashboards** (2 primary, scoped by cluster) |
-| image | `ghcr.io/nickfirefoot/vmwarenetstats@sha256:35515a2b…` — pushed |
-| dry run | 82 objects, **82 parent links**, 1,396 metric values, 11 s / 4 hosts |
+| HostSystem | `pcktpshr\|Uplink:<vmnic>\|<metric>` · `pcktpshr\|VMkernel:<vmk>\|<metric>` · `pcktpshr\|TEP:<vmk>\|<metric>` (NSX tunnel endpoints) |
+| VirtualMachine | `pcktpshr\|vNIC:<device key>\|<metric>` |
+| both | `pcktpshr\|Collector\|lastUpdated` — when the pack last wrote there |
 
-**One step remains, and it is not in the pak:** the GHCR package is created
-*private* by default, and a Cloud Proxy pulls the digest **anonymously**. Until it
-is public the adapter installs and silently cannot collect, with an error that
-reads like a management-pack fault rather than a permissions one.
+The pack sends **no relationships** and writes **no key outside `pcktpshr`**, so
+vCenter's own metrics, properties and structure are never modified.
 
-> `https://github.com/users/nickfirefoot/packages/container/vmwarenetstats/settings`
-> → *Change visibility* → **Public**
+## What it collects
 
-**The first collection cycle will look half-empty and that is correct.** Measured:
-443 metric values cold, 1,396 warm. Rates need two samples, and this pack emits
-*nothing* rather than a zero when it has one. Wait one further cycle before judging
-any rate column empty.
-
-## What it collects (once collecting)
-
-| Kind | Identifiers | Subject |
-|---|---|---|
-| `NetUplink` | host, vmnic | physical uplinks — driver error breakdown, ring config, link state |
-| `NetVmkernel` | host, vmk | VMkernel ports, per netstack — drops, filter drops, MTU coherence |
-| `NetVnic` | vm_uuid, vnic_key | virtual NICs — the inbound drop counters Operations declares but never fills |
+| Interface | Highlights |
+|---|---|
+| Physical uplink | rx-missed / ring overrun, CRC, frame, length, FIFO, over, carrier and abort errors; drops and loss ratios; ring size vs maximum; link state, flaps, negotiated vs capable speed; driver, firmware, pause and coalescing posture |
+| VMkernel interface | per-netstack drops, firewall-filter drops / errors / queue, MTU vs its uplink, ECN and congestion control, role (vSAN, vMotion, TEP, …) |
+| VM vNIC | rx/tx drops and loss ratios, broadcast/multicast/unicast rates, adapter type and class, disconnected, bandwidth limit, buffer settings |
 
 The design target is **grey-state** NIC failure: interfaces that are up, passing
-traffic, and quietly losing frames. The headline counter is `rxMissedRate`
-(ring overrun), which in the reference lab reads 24,225 lifetime on one uplink while
-every built-in vCenter error counter for the same uplink reads zero.
+traffic, and quietly losing frames. The headline counter is ring overrun
+(`rxMissedRate`), which vCenter's built-in error counters do not report.
+
+## Dashboards
+
+- **Rapid Network Physical NICs** — loss, wire errors, ring and posture, VMkernel by role, and vCenter's own counters for contrast
+- **Rapid Network VM NICs** — loss by vNIC, adapters and networks, by role, throughput
+- **Rapid Network VMkernel** — loss, throughput, and a dedicated **TEP panel** for NSX overlay performance
+
+Each lists one row per host × interface or VM × vNIC for the selected cluster.
 
 ## Requirements
 
-- VCF Operations 9.x (`vcops_minimum_version` 8.10.0)
-- One vCenter, reachable on 443, with a **read-only** account
-- No ESXi SSH, no host agent, no guest agent
-
-Only `get` / `list` / `stats` esxcli verbs are ever invoked, enforced in code rather
-than by convention.
+- Aria Operations 8.18 or VCF Operations 9.x, with a **Cloud Proxy** that can run
+  container adapters and pull from `ghcr.io` **and** `pkg-containers.githubusercontent.com`
+  (every image layer redirects there)
+- One vCenter reachable on 443 with a **read-only** account
+- No ESXi SSH, no host agent, no guest agent. Only `get` / `list` / `stats` esxcli
+  verbs are invoked, enforced in code
+- No Operations account to create: the adapter writes with the credential Operations
+  injects into its instance
 
 ## Installing
 
-1. In Operations: **Administration → Integrations → Repository → ADD**
-2. Select the `.pak` from `paks/`
-3. Tick **both** boxes:
-   - *Install the PAK file even if it is already installed*
-   - *Ignore the PAK file signature checking*
+1. **9.x only:** Admin UI → Administrator Settings → Security Settings →
+   *Activate Unsigned PAK Installation*. (8.18 asks you to confirm instead.)
+2. Operations: **Administration → Integrations → Repository → ADD**, select the `.pak`
+3. Tick **both** *Install the PAK file even if it is already installed* and
+   *Ignore the PAK file signature checking*; confirm the unsigned prompt; accept the EULA
+4. Add an account: vCenter host, read-only user and password, the Cloud Proxy as
+   collector; accept the vCenter certificate; **Start Collecting**
 
-This pak is **unsigned** — Broadcom signing is not available here, so the second box
-is mandatory. You are told up front rather than discovering it mid-install.
+The first push lands within one collection cycle. Rates need two samples, so rate
+and percentage columns fill from the second cycle (about five minutes later).
+A blank cell is never a zero: where a driver refuses a read, the pack emits nothing.
 
-If a panel shows *"Widget is not configured"* with an hourglass, the content import is
-still running. Wait for it; nothing has failed.
+## Upgrading from earlier versions
 
-## Fixed in 2.0.0
+Install over the top. Versions before 2.0.3 created their own uplink / VMkernel /
+vNIC objects; those stop updating and keep their history. The custom groups those
+versions shipped are removed (a group cannot select a single interface on a host).
 
-An adversarial pre-install review of 1.4.1 found four defects that would have
-made the first install misleading. All four are fixed and verified:
+## Known limits
 
-| | |
-|---|---|
-| **Parent relationships were never sent.** The HostSystem parent object was built free-standing and never added to the result, so the payload carried `"relationships": []` while every object's local parent set looked correct. Measured: 80 local parents, **0** links on the wire. Every dashboard selector would have reached nothing. | fixed, verified 80/80 on the wire |
-| **Dashboard ids were `uuid4`**, regenerated on every build, so a second install would have stacked duplicate dashboards instead of replacing them. | fixed to `uuid5`; a determinism test now gates it |
-| **The cluster selector used `Configuration|Name`**, which is the UI attribute-picker's display path and is neither a property nor a statkey. The real key is `config|name`. The selector drives all three dashboards. | fixed and verified against the live API |
-| **`connectFailed24h` emitted a constant `0`** on every vNIC while nothing ever queried the event it claimed to count. | metric removed rather than left declared-and-empty |
+- VMs Operations does not model (vSphere Pods; on 8.18 also Supervisor control-plane
+  VMs) have nowhere to receive vNIC data and are skipped.
+- Pushed values cannot be deleted from Operations. When an interface disappears its
+  metrics age out with retention; its last properties remain. `lastUpdated` tells
+  you whether the rest is current.
+- Air-gapped sites must mirror the image into a reachable registry; a container-free
+  build is in progress.
 
-## Known limitations
+## License
 
-Documented honestly rather than discovered later:
-
-- **Collection does not work in 2.0.0.** See Status above.
-- **Mellanox ring configuration is unavailable.** `nmlx5_core` does not expose ring
-  size through the VMkernel Sysinfo Interface, so `esxcli network nic ring current get`
-  returns *Not supported*. Broadcom's own `nicinfo.sh` uses the same command and hits
-  the same wall. Reported as "not reported by nmlx5_core", never as a zero.
-- **Vendor private statistics are unreachable.** They exist, as
-  `localcli --plugin-dir /usr/lib/vmware/esxcli/int networkinternal nic privstats get`,
-  but that plugin directory is not registered with hostd and `localcli` bypasses hostd
-  entirely. No agentless path reaches it.
-- **vmxnet3 ring depth has no API.** A guest receive-buffer overrun is detectable at the
-  port drop counter; the ring depth that caused it is `vsish`-only.
-- **Colour bands are not carried in the view files.** Set them in the UI per column.
-
-## Licence
-
-Apache 2.0 — see `LICENSE`.
+Apache-2.0 — see `LICENSE`.
