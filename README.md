@@ -46,9 +46,11 @@ traffic, and quietly losing frames. The headline counter is ring overrun
 
 All three are in the **vSphere Network Statistics** folder:
 
-- **Rapid Network Physical NICs** — loss, wire errors, ring and posture, VMkernel by role, and vCenter's own counters for contrast
-- **Rapid Network VM NICs** — loss by vNIC, adapters and networks, by role, throughput
-- **Rapid Network VMkernel** — loss, throughput, and a dedicated **TEP panel** for NSX overlay performance
+- **[Rapid Network Physical NICs](dashboards/Rapid_Network_Physical_NICs/)** — loss, wire errors, ring and posture, VMkernel by role, and vCenter's own counters for contrast
+- **[Rapid Network VM NICs](dashboards/Rapid_Network_VM_NICs/)** — loss by vNIC, adapters and networks, by role, throughput
+- **[Rapid Network VMkernel](dashboards/Rapid_Network_VMkernel/)** — loss, throughput, and a dedicated **TEP panel** for NSX overlay performance
+
+Each link opens a screenshot of the dashboard and the full text of its panels.
 
 Each lists one row per host × interface or VM × vNIC for the selected cluster.
 The loss columns show each interface's worst value of the last 7 days, so a
